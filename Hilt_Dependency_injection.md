@@ -46,3 +46,34 @@ eg:
 @HiltAndroidApp
 class MainApplication : Application(){
 }
+
+### Injection
+#### Constructor injection
+when we require a class to be injected in other class we inject the constructor for ToBeInjected Class, then only we can inject that class to main class
+
+eg: class TobeInjected @inject constructor(val value:int){}
+    class MainClass @inject constructor( val injectClass: TobeInjected){}
+    
+#### Field injection 
+field injection can be done in classes or activities which are annoted with @AndroidEntryPoint 
+and it can inject such classes which have Constructor injection 
+
+eg:
+@AndroidEntryPoint
+class MainActivity : AndroidComapatClass{
+@inject
+var lateinit mainclass : MainClass
+}
+
+#### method injection
+method injection will execute while injecting the method to target 
+the method injection will help to access the classes which have constructor injection 
+this will help in scenarion where class need to be accessed
+
+eg: 
+@inject 
+fun methodInjection( mainClass: MainClass){
+mainClass.doSomeThings()
+}
+
+
