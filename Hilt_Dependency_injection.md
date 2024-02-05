@@ -76,4 +76,20 @@ fun methodInjection( mainClass: MainClass){
 mainClass.doSomeThings()
 }
 
+### Module
+Module in hilt is different with compare to android architecture structure.
+Modules gives command to hilt how to create the interfaces / how to bind intefaces.
 
+#### Bind
+can be implemented in a abstract only and bind gives hilt a idea which instance the injector is calling.
+
+eg: 
+@Module
+@InstallIn(ActivityComponent::class)
+abstract class Network{
+    @Binds
+    abstract fun bindNetworkAdapterImpl(networkAdapterImpl: MyAppNetworkAdapter): NetworkAdapter
+
+}
+
+This will give access to all classes, which has inheritance from ActivityComponent, access to access NetworkAdapter injection 
