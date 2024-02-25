@@ -43,3 +43,17 @@ Kotlin handles this by named parameter where we can assign specific parameter.
 
 java : https://www.geeksforgeeks.org/builder-design-pattern/
 
+## Lazy Initialisation
+when large memory objects are created which can take more ram space while initialising, can use this pattern. Here in this pattern, the object will be initialized by the processor when the object is being called for, even when we have declared the object initially while creating the class itself.
+
+Kotlin handles this with lazy keyword:
+through lazy only val type of variable is created 
+to create var we can use lateinit where we can declare the object in the later part of initiation to variable 
+
+## Prototype pattern
+here main class is accessing an class through an interface and the class is given by giving a clone of the target class.
+java link : https://www.geeksforgeeks.org/prototype-design-pattern/
+
+this pattern feels similar to factory pattern
+
+## Adapter pattern 
