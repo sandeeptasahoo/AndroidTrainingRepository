@@ -10,7 +10,8 @@
 #### Doze Mode
 #### Scanfilter
 ### Bluetooth permission 
-### power efficiency : AlarmManager Vs JobScheduler VS WorkManager
+### power efficiency: AlarmManager Vs JobScheduler VS WorkManager
+
 ### other important questions
 Core Android + Bluetooth/D2D Fundamentals (15 Questions)
 What are the primary Bluetooth profiles supported in Android?
