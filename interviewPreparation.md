@@ -14,6 +14,7 @@
 
 ### other important questions
 Core Android + Bluetooth/D2D Fundamentals (15 Questions)
+
 What are the primary Bluetooth profiles supported in Android?
 
 How do Bluetooth Classic and Bluetooth Low Energy (BLE) differ in Android?
