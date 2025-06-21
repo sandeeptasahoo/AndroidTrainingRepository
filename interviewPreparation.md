@@ -1,4 +1,4 @@
-## context:
+/## context:
 ### AOSP low level android frameworks
 ### GATT and GAP protocol
 ### Scanning and bonding
@@ -38,9 +38,9 @@
                10. onDestroy: fragment instance destroy
                11. onDetach: fragment detaches from activity  
      2. How do you manage configuration changes?
-        1. Configuration change happens for orientation change, locale language changes, keyboard availability, screen size changes
+        1. Configuration change happens for orientation change, locale language changes, keyboard availability, and screen size changes
         2. When configuration changes, onDestroy is called for the  current activity. A new instance is created with onCreate.
-        3. The state can be restored manually using SaveInstanceState in onCreate bundle
+        3. The state can be restored manually using the SaveInstanceState in the onCreate bundle
         4. @Override
           protected void onSaveInstanceState(Bundle outState) {
               outState.putString("inputText", editText.getText().toString());
@@ -60,18 +60,37 @@
       1. To navigate within the app activity, services are started where the target service or activity is specified. That's an explicit intent.
       2. In implicit intent, instead of specifying a specific activity, a general action to perform is declared, and Android finds the app that can handle it.
    2. How do you use BroadcastReceiver for system events (e.g., Bluetooth state changes)?
-      1. 
+      1. <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+      2. <receiver android:name=".BluetoothStateReceiver">
+              <intent-filter>
+                  <action android:name="android.bluetooth.adapter.action.STATE_CHANGED" />
+              </intent-filter>
+          </receiver>
 3. Services:
+   1. What are the types of Android Services?
+      1. Foreground service:
+         1. The service will keep running under memory pressure.
+         2. eg: music player, fitness tracker, download/upload
+         3. Call startForeground() within 5 seconds of starting.
+      2. Background service:
+         1. Run without any user interaction or notification, but the app needs to be in foreground or using JobIntentService, WorkManager
+         2. Available after Android 8+
+         3. The tasks should be short  
+      3. Bound Service
+         1. Allows components to bind and interact via an interface
+         2. The service will run as long as a client is bound to it
+         3. 
+      5. 
+         
+   3. How do foreground services differ, especially in the context of Bluetooth scanning?
 
-What are the types of Android Services?
-
-How do foreground services differ, especially in context of Bluetooth scanning?
-
-Permissions:
+5. Permissions:
 
 Which permissions are required for Bluetooth, Wi-Fi Direct, or nearby device access?
 
 How do you handle runtime permission requests?
+   
+
 
 WorkManager/JobScheduler:
 
