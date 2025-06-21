@@ -79,28 +79,74 @@
       3. Bound Service
          1. Allows components to bind and interact via an interface
          2. The service will run as long as a client is bound to it
-         3. 
-      5. 
          
+   2. Service lifecycle
+      normal service
+      1. onCreate:
+         When the service is created first.
+      2. onStartCommand:
+         called whenever startService is called. The return type will decide how the next start service will use the intent.
+         START_STICKY: Restart service with null intent.
+         START_NOT_STICKY: Don’t restart.
+         START_REDELIVER_INTENT: Restart and redeliver the last intent.
+      3. onDestroy:
+      
+      bound service
+      1. onBind(Intent intent): Called when a client binds using bindService(). Returns an IBinder for interaction.
+      2. onUnbind(Intent intent): Called when all clients have unbound.
+      3. onRebind(Intent intent): Called when new clients bind after onUnbind().
+      4. onDestroy(): Called when the service is no longer used.
+
    3. How do foreground services differ, especially in the context of Bluetooth scanning?
+      1. If the app is in the background and tries to use Bluetooth scanning, the service will be killed silently, but if it runs with a foreground service (like a notification), it will not. It will be executed.
+      2. public class BluetoothScanService extends Service {
+              @Override
+              public int onStartCommand(Intent intent, int flags, int startId) {
+                  startForeground(1, buildNotification());
+                  startBleScan();
+                  return START_STICKY;
+              }
+          
+              private void startBleScan() {
+                  BluetoothLeScanner scanner = BluetoothAdapter.getDefaultAdapter().getBluetoothLeScanner();
+                  scanner.startScan(scanCallback);
+              }
+          
+              private Notification buildNotification() {
+                  return new NotificationCompat.Builder(this, "scan_channel")
+                          .setContentTitle("Scanning for devices")
+                          .setSmallIcon(R.drawable.ic_bluetooth)
+                          .setOngoing(true)
+                          .build();
+              }
+          
+              @Override
+              public IBinder onBind(Intent intent) {
+                  return null;
+              }
+          }
 
-5. Permissions:
-
-Which permissions are required for Bluetooth, Wi-Fi Direct, or nearby device access?
-
-How do you handle runtime permission requests?
-   
-
-
-WorkManager/JobScheduler:
-
-Which is suitable for periodic background Bluetooth sync tasks?
-
-Threads and Async Tasks:
-
-Alternatives to AsyncTask in modern Android (e.g., Kotlin Coroutines).
-
-Why is multithreading important in Bluetooth/D2D comms?
+4. Permissions:
+   1. Which permissions are required for Bluetooth, Wi-Fi Direct, or nearby device access?
+      1. Bluetooth:
+      Android 12+
+      - BLUETOOTH_CONNECT (for connect/bond/pair)
+      - BLUETOOTH_SCAN (for scanning)
+      - ACCESS_FINE_LOCATION (still needed for location-based scan filtering on some devices)
+      2. Wi-Fi Direct:
+      - ACCESS_FINE_LOCATION (for discovering peers)
+      - CHANGE_WIFI_STATE
+      - ACCESS_WIFI_STATE
+      3. Nearby connections
+      - NEARBY_WIFI_DEVICES (for nearby over Wi-Fi)
+      - NEARBY_DEVICES (for BLE, Wi-Fi, or UWB)
+      - BLUETOOTH_SCAN and ACCESS_FINE_LOCATION may still apply, depending on the implementation
+   3. How do you handle runtime permission requests?
+7. WorkManager/JobScheduler:
+   1. Which is suitable for periodic background Bluetooth sync tasks?
+   2. Threads and Async Tasks:
+10. Alternatives to AsyncTask in modern Android (e.g., Kotlin Coroutines).
+11. Why is multithreading important in Bluetooth/D2D comms?
 
 Foreground Service Notification:
 
