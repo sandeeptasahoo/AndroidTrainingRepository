@@ -13,7 +13,80 @@
 ### power efficiency: AlarmManager Vs JobScheduler VS WorkManager
 
 ### other important questions
+1. Android Application Lifecycle:
+     1. Explain the activity and fragment lifecycle.
+          1. Activity is the main content that the user can interact with
+          2. It has several life cycle callbacks
+               1. onCreate: UI initialise
+               2. onStart: visible to the user but not foreground
+               3. onResume: The user can interact
+               4. onPause: another activity is on foreground, save ui changes 
+               5. onStop: resources released
+               6. onRestart : 
+               7. onDestroy: cleaning up resources 
+          3. A fragment is a modular piece of an activity's UI whose lifecycle is tied to the host activity.
+          4. It has lifecycle callbacks:
+               1. onAttach: The fragment attaches to the host activity
+               2. onCreate: initialise fragment UI state
+               3. onCreateView: inflate the view
+               4. onViewCreated: view created, now the listener setup can be done
+               5. onStart: fragment is visible
+               6. onResume: The user can interact
+               7. onPause: fragment no longer foreground
+               8. onStop: no longer visible
+               9. onDestroyView: Clean up UI reference
+               10. onDestroy: fragment instance destroy
+               11. onDetach: fragment detaches from activity  
+     3. How do you manage configuration changes?
+
+Intents and Broadcast Receivers:
+
+What is the difference between explicit and implicit intents?
+
+How do you use BroadcastReceiver for system events (e.g., Bluetooth state changes)?
+
+Services:
+
+What are the types of Android Services?
+
+How do foreground services differ, especially in context of Bluetooth scanning?
+
+Permissions:
+
+Which permissions are required for Bluetooth, Wi-Fi Direct, or nearby device access?
+
+How do you handle runtime permission requests?
+
+WorkManager/JobScheduler:
+
+Which is suitable for periodic background Bluetooth sync tasks?
+
+Threads and Async Tasks:
+
+Alternatives to AsyncTask in modern Android (e.g., Kotlin Coroutines).
+
+Why is multithreading important in Bluetooth/D2D comms?
+
+Foreground Service Notification:
+
+Why is a foreground notification mandatory for Bluetooth scanning in Android 10+?
+
+Data Storage:
+
+How to store scanned device data locally?
+
+What’s the best approach to store sensor or telemetry data?
+
+Dependency Injection:
+
+How do you inject BluetoothAdapter using Dagger/Hilt?
+
+Jetpack Components:
+
+How can LiveData help in observing device state changes?
+
 Core Android + Bluetooth/D2D Fundamentals (15 Questions)
+1.
 
 What are the primary Bluetooth profiles supported in Android?
 
