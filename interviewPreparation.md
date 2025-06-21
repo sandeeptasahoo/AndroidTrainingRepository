@@ -55,13 +55,10 @@
               }
           }
 
-Intents and Broadcast Receivers:
-
-What is the difference between explicit and implicit intents?
-
-How do you use BroadcastReceiver for system events (e.g., Bluetooth state changes)?
-
-Services:
+2. Intents and Broadcast Receivers:
+   1. What is the difference between explicit and implicit intents?
+   2. How do you use BroadcastReceiver for system events (e.g., Bluetooth state changes)?
+3. Services:
 
 What are the types of Android Services?
 
