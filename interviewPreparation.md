@@ -37,7 +37,23 @@
                9. onDestroyView: Clean up UI reference
                10. onDestroy: fragment instance destroy
                11. onDetach: fragment detaches from activity  
-     3. How do you manage configuration changes?
+     2. How do you manage configuration changes?
+        1. Configuration change happens for orientation change, locale language changes, keyboard availability, screen size changes
+        2. When configuration changes, onDestroy is called for the  current activity. A new instance is created with onCreate.
+        3. The state can be restored manually using SaveInstanceState in onCreate bundle
+        4. @Override
+          protected void onSaveInstanceState(Bundle outState) {
+              outState.putString("inputText", editText.getText().toString());
+              super.onSaveInstanceState(outState);
+           }
+          @Override
+          protected void onCreate(Bundle savedInstanceState) {
+              super.onCreate(savedInstanceState);
+              if (savedInstanceState != null) {
+                  String text = savedInstanceState.getString("inputText");
+                  editText.setText(text);
+              }
+          }
 
 Intents and Broadcast Receivers:
 
