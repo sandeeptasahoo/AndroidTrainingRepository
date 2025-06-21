@@ -57,7 +57,10 @@
 
 2. Intents and Broadcast Receivers:
    1. What is the difference between explicit and implicit intents?
+      1. To navigate within the app activity, services are started where the target service or activity is specified. That's an explicit intent.
+      2. In implicit intent, instead of specifying a specific activity, a general action to perform is declared, and Android finds the app that can handle it.
    2. How do you use BroadcastReceiver for system events (e.g., Bluetooth state changes)?
+      1. 
 3. Services:
 
 What are the types of Android Services?
@@ -309,3 +312,9 @@ How would you debug inconsistent BLE performance across multiple Android devices
 What would you do if your BLE app worked on Pixel devices but failed on Samsung ones?
 
 How would you design a device-to-device chat app using Bluetooth and Nearby?
+
+### Development tips 
+#### bluetooth system  
+1. Prefer dynamic registration in modern apps due to Android background limitations.
+2. Always unregister receivers to avoid memory leaks.
+3. For long-running tasks in response to broadcasts, start a foreground service or use WorkManager.
