@@ -99,7 +99,9 @@
 
    3. How do foreground services differ, especially in the context of Bluetooth scanning?
       1. If the app is in the background and tries to use Bluetooth scanning, the service will be killed silently, but if it runs with a foreground service (like a notification), it will not. It will be executed.
-      2. public class BluetoothScanService extends Service {
+      2. public class BluetoothScanService extends Service
+         
+              {
               @Override
               public int onStartCommand(Intent intent, int flags, int startId) {
                   startForeground(1, buildNotification());
