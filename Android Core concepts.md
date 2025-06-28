@@ -230,3 +230,29 @@ Video link:
 Solid architecture:
 Dagger injection: 
 
+## Service 
+1. What are the types of Android Services?
+   1. Foreground service:
+      The service will keep running under memory pressure.
+      eg: music player, fitness tracker, download/upload
+      Call startForeground() within 5 seconds of starting.
+   2. Background service:
+      Run without any user interaction or notification, but the app needs to be in foreground or using JobIntentService, WorkManager
+      Available after Android 8+
+      The tasks should be short
+   3. Bound Service
+      Allows components to bind and interact via an interface
+      The service will run as long as a client is bound to it
+
+2. Service lifecycle normal service
+   onCreate: When the service is created first.
+   onStartCommand: Called whenever startService is called. The return type will decide how the next start service will use the intent. START_STICKY: Restart service with null intent. START_NOT_STICKY: Don’t restart. START_REDELIVER_INTENT: Restart and redeliver the last intent.
+   onDestroy:
+
+   bound service
+   onBind(Intent intent): Called when a client binds using bindService(). Returns an IBinder for interaction.
+   onUnbind(Intent intent): Called when all clients have unbound.
+   onRebind(Intent intent): Called when new clients bind after onUnbind().
+   onDestroy(): Called when the service is no longer used.
+3. OnTaskRemoved is a major functionality that gets triggered when the activity that binds to the service is removed from the foreground. This helps to stop the service when not in use. In case of bound service, until unbind is not called the service wont end. 
+
