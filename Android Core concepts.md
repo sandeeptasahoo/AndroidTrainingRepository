@@ -254,5 +254,6 @@ Dagger injection:
    onUnbind(Intent intent): Called when all clients have unbound.
    onRebind(Intent intent): Called when new clients bind after onUnbind().
    onDestroy(): Called when the service is no longer used.
-3. OnTaskRemoved is a major functionality that gets triggered when the activity that binds to the service is removed from the foreground. This helps to stop the service when not in use. In case of bound service, until unbind is not called the service wont end. 
+3. OnTaskRemoved is a major functionality that gets triggered when the activity that binds to the service is removed from the foreground. This helps to stop the service when not in use. In case of bound service, until unbind is not called, the service wont end.
+4. If a service is started with bindService() only, without calling startService(), the service will call onStartCommand() then onBind() will be called. This service will stay alive until all the clients are unbind. If a service starts with calling startService() first, then bindService() then the service will remain running if all client have unbinded it.   
 
