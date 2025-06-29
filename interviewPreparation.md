@@ -198,23 +198,82 @@
 
 7. Foreground Service Notification:
    1. Why is a foreground notification mandatory for Bluetooth scanning in Android 10+?
-      Battery optimisation was introduced by google in 10+ with trictness on privacy policy.
+      Battery optimisation was introduced by Google in 10+ with strictness on privacy policy.
       
 
 8. Data Storage:
    1. How to store scanned device data locally?
+      using live data observer,
+      each data point should have a time field to handle heavy flow
+      
+   3. What’s the best approach to store sensor or telemetry data?
+      Speed and memory efficiency (since sensors can generate a lot of data),
+      Persistence (to avoid data loss)
+      Battery-awareness
+      Upload/sync capability (to cloud or server)
 
-What’s the best approach to store sensor or telemetry data?
+      Use Handler, Coroutine, or ExecutorService to offload writes
 
-Dependency Injection:
+9. Dependency Injection:
+   1. How do you inject BluetoothAdapter using Dagger/Hilt?
+     @Module
+     @InstallIn(SingletonComponent::class)
+     object BluetoothModule {
+     
+         @Provides
+         @Singleton
+         fun provideBluetoothAdapter(): BluetoothAdapter? {
+             val bluetoothManager = 
+                 ApplicationProvider.getApplicationContext<Context>()
+                     .getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+             return bluetoothManager.adapter
+         }
 
-How do you inject BluetoothAdapter using Dagger/Hilt?
+     @AndroidEntryPoint
+     class MainActivity : AppCompatActivity() {
+     
+         @Inject
+         lateinit var bluetoothAdapter: BluetoothAdapter
+     
+         override fun onCreate(savedInstanceState: Bundle?) {
+             super.onCreate(savedInstanceState)
+     
+             if (bluetoothAdapter.isEnabled) {
+                 // Use the adapter
+             }
+         }
+     }
 
-Jetpack Components:
+11. Jetpack Components:
+    1. How can LiveData help in observing device state changes?
+       class BluetoothStateLiveData(context: Context) : LiveData<Boolean>() {
 
-How can LiveData help in observing device state changes?
+              private val appContext = context.applicationContext
+              private val bluetoothReceiver = object : BroadcastReceiver() {
+                  override fun onReceive(context: Context?, intent: Intent?) {
+                      if (BluetoothAdapter.ACTION_STATE_CHANGED == intent?.action) {
+                          val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, -1)
+                          value = state == BluetoothAdapter.STATE_ON
+                      }
+                  }
+              }
+          
+              override fun onActive() {
+                  super.onActive()
+                  val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+                  appContext.registerReceiver(bluetoothReceiver, filter)
+                  // Emit current state
+                  val adapter = BluetoothAdapter.getDefaultAdapter()
+                  value = adapter?.isEnabled == true
+              }
+          
+              override fun onInactive() {
+                  super.onInactive()
+                  appContext.unregisterReceiver(bluetoothReceiver)
+              }
+          }
 
-Core Android + Bluetooth/D2D Fundamentals (15 Questions)
+### Core Android + Bluetooth/D2D Fundamentals (15 Questions)
 1.
 
 What are the primary Bluetooth profiles supported in Android?
