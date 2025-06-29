@@ -255,5 +255,52 @@ Dagger injection:
    onRebind(Intent intent): Called when new clients bind after onUnbind().
    onDestroy(): Called when the service is no longer used.
 3. OnTaskRemoved is a major functionality that gets triggered when the activity that binds to the service is removed from the foreground. This helps to stop the service when not in use. In case of bound service, until unbind is not called, the service wont end.
-4. If a service is started with bindService() only, without calling startService(), the service will call onStartCommand() then onBind() will be called. This service will stay alive until all the clients are unbind. If a service starts with calling startService() first, then bindService() then the service will remain running if all client have unbinded it.   
+4. If a service is started with bindService() only, without calling startService(), the service will call onStartCommand() then onBind() will be called. This service will stay alive until all the clients are unbind. If a service starts with calling startService() first, then bindService() then the service will remain running if all client have unbinded it.
+5. 
+
+## worker manager
+1. WorkManager is a part of Android Jetpack's Architecture Components — a robust background task scheduler designed for deferrable, guaranteed execution of tasks.
+   1. It is the recommended solution for background tasks that:
+      1. Need to run even if the app exits or the device restarts
+      2. Should be battery- and system-friendly
+      3. May be periodic or one-time
+      4. Battery-efficient
+      5. Thread-safe and lifecycle-aware
+2. This is never to be used for UI updates or any exact timing task. The service can be used for such a scenario.
+3. code example :
+   1. OneTimeWorkRequest:
+      OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(MyWorker.class).build();
+      WorkManager.getInstance(context).enqueue(work);
+   2. PeriodicWorkRequest: (Run a task repeatedly with at least 15-minute intervals.)
+      PeriodicWorkRequest periodic = new PeriodicWorkRequest.Builder(MyWorker.class, 15, TimeUnit.MINUTES).build();
+      WorkManager.getInstance(context).enqueue(periodic);
+
+      public class MyWorker extends Worker {
+          public MyWorker(@NonNull Context context, @NonNull WorkerParameters params) {
+              super(context, params);
+          }
+      
+          @NonNull
+          @Override
+          public Result doWork() {
+              // Do background work here (e.g., sync, upload, scan)
+              return Result.success(); // Or retry(), or failure()
+          }
+      }
+   3. Chaining & Input/Output
+       WorkManager.getInstance(context)
+       .beginWith(task1)
+       .then(task2)
+       .enqueue();
+   4. Constraints Example
+      Constraints constraints = new Constraints.Builder()
+      .setRequiresCharging(true)
+      .setRequiredNetworkType(NetworkType.UNMETERED)
+      .build();
+  
+      OneTimeWorkRequest work = new OneTimeWorkRequest.Builder(MyWorker.class)
+          .setConstraints(constraints)
+          .build();
+   6. 
+
 
