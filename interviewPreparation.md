@@ -303,10 +303,45 @@ Obsolete or Limited Support Profiles
    13. OPP (Object Push Profile)                    | Push files (e.g., images, contacts) between devices                     | Deprecated in modern Android versions   |
    14. FTP (File Transfer Profile)                  | Browsing remote file systems                                            | Not supported in standard Android stack |
 
+2. How do Bluetooth Classic and Bluetooth Low Energy (BLE) differ in Android?
+   1. Comparison
+     | Feature                      | **Bluetooth Classic**             | **Bluetooth Low Energy (BLE)**                  |
+     | ---------------------------- | --------------------------------- | ----------------------------------------------- |
+     | **API Start**                | Android API 1                     | Android 4.3+ (API 18)                           |
+     | **Use Case**                 | Streaming, continuous connections | Sensor data, infrequent small data transfers    |
+     | **Power Consumption**        | Higher                            | Ultra-low power                                 |
+     | **Connection Time**          | Slower (100–200 ms)               | Faster (3–10 ms)                                |
+     | **Data Throughput**          | Higher (\~2–3 Mbps)               | Lower (\~0.27 Mbps)                             |
+     | **Device Types**             | Headsets, speakers, printers      | Beacons, wearables, heart rate monitors         |
+     | **Communication Mode**       | Continuous stream                 | GATT-based request-response                     |
+     | **Simultaneous Connections** | Few (1:1 or limited multi-point)  | Many-to-one (central with multiple peripherals) |
+     | **Pairing Requirement**      | Often required                    | Optional (can operate in advertising mode)      |
+   2. Android API Differences
+     | Operation         | Bluetooth Classic                                             | BLE                                |
+     | ----------------- | ------------------------------------------------------------- | ---------------------------------- |
+     | **Discovery**     | `startDiscovery()` (scan all nearby)                          | `startScan()` (fine-tuned filters) |
+     | **Connect**       | `BluetoothSocket.connect()`                                   | `connectGatt()`                    |
+     | **Data Transfer** | Streams via `InputStream`/`OutputStream`                      | Read/write GATT characteristics    |
+     | **Permissions**   | `BLUETOOTH`, `BLUETOOTH_ADMIN`, `BLUETOOTH_CONNECT` (API 31+) | Same + location for scanning       |
+     | **Pairing**       | Often via system UI                                           | GATT pairing optional              |
+
+   3.  Code-level Differences
+       Classic example
+       BluetoothDevice device = bluetoothAdapter.getRemoteDevice(address);
+       BluetoothSocket socket = device.createRfcommSocketToServiceRecord(MY_UUID);
+       socket.connect();
+
+       BLE Example
+       device.connectGatt(context, false, new BluetoothGattCallback() {
+           @Override
+           public void onConnectionStateChange(...) { ... }
+     
+           @Override
+           public void onServicesDiscovered(...) { ... }
+       });
 
 
-
-How do Bluetooth Classic and Bluetooth Low Energy (BLE) differ in Android?
+   5.  
 
 What permissions are required for Bluetooth operations in Android 12+?
 
