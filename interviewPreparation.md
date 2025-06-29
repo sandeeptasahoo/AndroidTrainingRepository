@@ -274,9 +274,37 @@
           }
 
 ### Core Android + Bluetooth/D2D Fundamentals (15 Questions)
-1.
+1. What are the primary Bluetooth profiles supported in Android?
+   | Profile                                      | Description                                                             | Android API
+   MEDIA PROFILES                         
+   1. A2DP (Advanced Audio Distribution Profile)    | Streams high-quality audio from device to Bluetooth headphones/speakers | [`BluetoothA2dp`](https://developer.android.com/reference/android/bluetooth/BluetoothA2dp) |
+   2. AVRCP (Audio/Video Remote Control Profile)    | Controls media playback (play, pause, skip) from headset/car controls   | Integrated with system, no direct API                                                 
+   3. HFP (Hands-Free Profile)                      | Used for voice calls in cars/headsets                                   | System-managed, no direct app-level API
 
-What are the primary Bluetooth profiles supported in Android?
+Input Device Profiles
+   4. HID (Human Interface Device)                  | Supports input devices like keyboards, mice, game controllers           | `BluetoothHidDevice`, `BluetoothHidHost`
+   5. HOGP (HID over GATT)                          | BLE-based HID devices (e.g., fitness trackers with button input)        | Limited support via GATT
+
+Telephony & Messaging Profiles
+   6. PBAP (Phone Book Access Profile)              | Used in cars to access contacts                                         | System-level only
+   7. MAP (Message Access Profile)                  | Access and push SMS/MMS between phone and car                           | System-level only 
+
+Communication & Networking Profiles
+   8. SPP (Serial Port Profile)                     | Emulates serial communication over Bluetooth (classic)                  | `BluetoothSocket`, `BluetoothServerSocket` 
+   9. PAN (Personal Area Network)                   | Internet sharing (tethering over Bluetooth)                             | Limited support; no public API   
+
+Low Energy (BLE) Profiles
+   10. GATT (Generic Attribute Profile)	             BLE-based data communication, services, characteristics	                  BluetoothGatt, BluetoothGattServer, BluetoothGattCallback
+   11. TIP (Time Profile)	                       Sync time from smartphone to BLE device	                                 Via GATT, no dedicated Android API
+   12. HRP (Heart Rate Profile)	                  Used for fitness devices (e.g., chest straps, smartwatches)                Via GATT with standardized UUIDs
+
+Obsolete or Limited Support Profiles
+
+   13. OPP (Object Push Profile)                    | Push files (e.g., images, contacts) between devices                     | Deprecated in modern Android versions   |
+   14. FTP (File Transfer Profile)                  | Browsing remote file systems                                            | Not supported in standard Android stack |
+
+
+
 
 How do Bluetooth Classic and Bluetooth Low Energy (BLE) differ in Android?
 
