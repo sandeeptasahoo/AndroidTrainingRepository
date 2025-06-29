@@ -143,20 +143,66 @@
       - NEARBY_WIFI_DEVICES (for nearby over Wi-Fi)
       - NEARBY_DEVICES (for BLE, Wi-Fi, or UWB)
       - BLUETOOTH_SCAN and ACCESS_FINE_LOCATION may still apply, depending on the implementation
-   3. How do you handle runtime permission requests?
-7. WorkManager/JobScheduler:
+   2. How do you handle runtime permission requests?
+      if (hasAllPermissions(this, permissions)) {
+              startBluetoothScan();
+          } else {
+              ActivityCompat.requestPermissions(this, permissions, BLUETOOTH_REQUEST_CODE);
+          }
+5. WorkManager/JobScheduler:
    1. Which is suitable for periodic background Bluetooth sync tasks?
-   2. Threads and Async Tasks:
-10. Alternatives to AsyncTask in modern Android (e.g., Kotlin Coroutines).
-11. Why is multithreading important in Bluetooth/D2D comms?
+      WorkManager is suitable for periodic background work
+      reasons:
+      life cycle aware
+      runs even if the app crashes
+      long-running task without load
+   3. Threads and Async Tasks:
+      1. Thread is a java concept 
+         Thread thread = new Thread(new Runnable() {
+             @Override
+             public void run() {
+                 // Background task
+             }
+         });
+         thread.start();
 
-Foreground Service Notification:
+      2. Async tasks has been deprecated
+         private class MyAsyncTask extends AsyncTask<Void, Integer, String> {
 
-Why is a foreground notification mandatory for Bluetooth scanning in Android 10+?
+              @Override
+              protected void onPreExecute() {
+                  // Runs on UI thread before task starts
+              }
+          
+              @Override
+              protected String doInBackground(Void... params) {
+                  // Runs on background thread
+                  return "Result";
+              }
+          
+              @Override
+              protected void onProgressUpdate(Integer... values) {
+                  // UI updates during progress
+              }
+          
+              @Override
+              protected void onPostExecute(String result) {
+                  // Runs on UI thread with result
+              }
+          }
 
-Data Storage:
+6. Alternatives to AsyncTask in modern Android (e.g., Kotlin Coroutines).
+     1. Why is multithreading important in Bluetooth/D2D comms?
+        In a background thread, after receiving any broadcast, we can run a long task on the same thread, as we can lose some responses
+        So, a worker handler with a coroutine is the best way to manage this. 
 
-How to store scanned device data locally?
+7. Foreground Service Notification:
+   1. Why is a foreground notification mandatory for Bluetooth scanning in Android 10+?
+      Battery optimisation was introduced by google in 10+ with trictness on privacy policy.
+      
+
+8. Data Storage:
+   1. How to store scanned device data locally?
 
 What’s the best approach to store sensor or telemetry data?
 
