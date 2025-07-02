@@ -340,34 +340,309 @@ Obsolete or Limited Support Profiles
            public void onServicesDiscovered(...) { ... }
        });
 
+3. What permissions are required for Bluetooth operations in Android 12+?
+   nearby device permission, location permission, and bluetooth permission 
+4. What is the purpose of BluetoothAdapter in Android?
+   1. The BluetoothAdapter in Android is the entry point for all Bluetooth interactions on the device. It represents the device’s Bluetooth radio and provides APIs to manage and control Bluetooth operations.
+   2. It’s typically a singleton and is accessed using BluetoothAdapter.getDefaultAdapter().
+5. How do you check if Bluetooth is enabled on the device?
+   bluetoothAdapter.isEnabled()
+   Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+   startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+6. What is the role of BluetoothManager?
+   1. Multiple active GATT connections
+   2. Connection state changes (connected/disconnected)
+   3. Resource cleanup on disconnect
 
-   5.  
+7. What is GATT in BLE, and how does Android handle it?
+   1. Scan for BLE devices (BluetoothLeScanner)
+   2. Connect using connectGatt()
+   3. Discover services
+   4. Read/Write characteristics or descriptors
+   5. Enable notifications or indications
+   6. Disconnect and close
+  
+   important
+   GATT operations are asynchronous – you must wait for callbacks.
+   Only one operation (read/write/discover) should be active at a time.
+   BLE scanning and connection require runtime permissions (e.g., BLUETOOTH_CONNECT, NEARBY_DEVICES).
 
-What permissions are required for Bluetooth operations in Android 12+?
+   class MainActivity : AppCompatActivity() {
 
-What is the purpose of BluetoothAdapter in Android?
+         private lateinit var bluetoothAdapter: BluetoothAdapter
+         private lateinit var scanner: BluetoothLeScanner
+         private var bluetoothGatt: BluetoothGatt? = null
+     
+         private val targetDeviceName = "MyBLEDevice" // Replace with your BLE device name
+         private val targetServiceUUID = UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb") // e.g., Heart Rate
+         private val targetCharUUID = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb")    // e.g., HR Measurement
+     
+         override fun onCreate(savedInstanceState: Bundle?) {
+             super.onCreate(savedInstanceState)
+     
+             val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+             bluetoothAdapter = bluetoothManager.adapter
+             scanner = bluetoothAdapter.bluetoothLeScanner
+     
+             checkPermissionsAndStartScan()
+         }
+     
+         private fun checkPermissionsAndStartScan() {
+             val perms = arrayOf(
+                 Manifest.permission.BLUETOOTH_SCAN,
+                 Manifest.permission.BLUETOOTH_CONNECT,
+                 Manifest.permission.ACCESS_FINE_LOCATION
+             )
+     
+             if (perms.any { ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED }) {
+                 ActivityCompat.requestPermissions(this, perms, 1001)
+             } else {
+                 startScan()
+             }
+         }
+     
+         private fun startScan() {
+             scanner.startScan(scanCallback)
+             Toast.makeText(this, "Scanning...", Toast.LENGTH_SHORT).show()
+         }
+     
+         private val scanCallback = object : ScanCallback() {
+             override fun onScanResult(callbackType: Int, result: ScanResult) {
+                 val device = result.device
+                 if (device.name == targetDeviceName) {
+                     scanner.stopScan(this)
+                     bluetoothGatt = device.connectGatt(this@MainActivity, false, gattCallback)
+                     Log.d("BLE", "Connecting to ${device.address}")
+                 }
+             }
+         }
+     
+         private val gattCallback = object : BluetoothGattCallback() {
+     
+             override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+                 if (newState == BluetoothProfile.STATE_CONNECTED) {
+                     Log.d("BLE", "Connected! Discovering services...")
+                     gatt.discoverServices()
+                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                     Log.d("BLE", "Disconnected")
+                     bluetoothGatt?.close()
+                     bluetoothGatt = null
+                 }
+             }
+     
+             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+                 val service = gatt.getService(targetServiceUUID)
+                 val characteristic = service?.getCharacteristic(targetCharUUID)
+     
+                 if (characteristic != null) {
+                     gatt.readCharacteristic(characteristic)
+                 } else {
+                     Log.e("BLE", "Characteristic not found")
+                 }
+             }
+     
+             override fun onCharacteristicRead(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic, status: Int) {
+                 if (status == BluetoothGatt.GATT_SUCCESS) {
+                     val data = characteristic.value
+                     Log.d("BLE", "Characteristic Read: ${data?.joinToString()}")
+                 } else {
+                     Log.e("BLE", "Failed to read characteristic")
+                 }
+             }
+         }
+     
+         override fun onDestroy() {
+             bluetoothGatt?.close()
+             super.onDestroy()
+         }
+     }
 
-How do you check if Bluetooth is enabled on the device?
 
-What is the role of BluetoothManager?
+8. What is the difference between GATT server and GATT client?
+   GATT client: The device that requests data
+   GATT server: The device that provides data
 
-What is GATT in BLE, and how does Android handle it?
+   gatt server code:
+   class GattServerService : Service() {
 
-What is the difference between GATT server and GATT client?
+         private lateinit var bluetoothManager: BluetoothManager
+         private lateinit var bluetoothAdapter: BluetoothAdapter
+         private var gattServer: BluetoothGattServer? = null
+     
+         private val SERVICE_UUID = UUID.fromString("00001810-0000-1000-8000-00805f9b34fb")
+         private val CHAR_UUID = UUID.fromString("00002a35-0000-1000-8000-00805f9b34fb")
+     
+         override fun onCreate() {
+             super.onCreate()
+     
+             bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+             bluetoothAdapter = bluetoothManager.adapter
+     
+             startGattServer()
+         }
+     
+         private fun startGattServer() {
+             val service = BluetoothGattService(SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY)
+     
+             val characteristic = BluetoothGattCharacteristic(
+                 CHAR_UUID,
+                 BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                 BluetoothGattCharacteristic.PERMISSION_READ
+             )
+     
+             service.addCharacteristic(characteristic)
+     
+             gattServer = bluetoothManager.openGattServer(this, gattServerCallback)
+             gattServer?.addService(service)
+         }
+     
+         private val gattServerCallback = object : BluetoothGattServerCallback() {
+     
+             override fun onConnectionStateChange(device: BluetoothDevice?, status: Int, newState: Int) {
+                 Log.d("GATT_SERVER", "Device connection state changed: $newState")
+             }
+     
+             override fun onCharacteristicReadRequest(
+                 device: BluetoothDevice, requestId: Int,
+                 offset: Int, characteristic: BluetoothGattCharacteristic
+             ) {
+                 if (characteristic.uuid == CHAR_UUID) {
+                     val responseValue = byteArrayOf(0x42) // some dummy data
+                     gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, responseValue)
+                     Log.d("GATT_SERVER", "Read request served")
+                 }
+             }
+         }
+     
+         override fun onDestroy() {
+             gattServer?.close()
+             super.onDestroy()
+         }
+     
+         override fun onBind(intent: Intent?): IBinder? = null
+     }
 
-How do you scan for BLE devices in Android?
+Start BLE advertisement
+     val advertiser = bluetoothAdapter.bluetoothLeAdvertiser
+     val settings = AdvertiseSettings.Builder()
+         .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+         .setConnectable(true)
+         .build()
+     
+     val data = AdvertiseData.Builder()
+         .setIncludeDeviceName(true)
+         .addServiceUuid(ParcelUuid(SERVICE_UUID))
+         .build()
+     
+     advertiser.startAdvertising(settings, data, advertiseCallback)
 
-What is the ScanCallback used for in BLE?
+9. How do you scan for BLE devices in Android? What is the ScanCallback used for in BLE?
+   val scanner = bluetoothAdapter.bluetoothLeScanner
+   val scanCallback = object : ScanCallback() {
+        override fun onScanResult(callbackType: Int, result: ScanResult) {
+             val device = result.device
+             Log.d("BLE", "Found device: ${device.name}, address: ${device.address}")
+         }
+     
+         override fun onScanFailed(errorCode: Int) {
+             Log.e("BLE", "Scan failed with error: $errorCode")
+         }
+     }
+   val filters = listOf(
+         ScanFilter.Builder()
+             .setDeviceName("MyBLEDevice") // or .setServiceUuid(ParcelUuid(UUID))
+             .build()
+     )
 
-How can Android apps connect to paired Bluetooth Classic devices?
+     val settings = ScanSettings.Builder()
+         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+         .build()
+     
+     scanner.startScan(filters, settings, scanCallback)
 
-What are the implications of running Bluetooth operations in the background on Android 10+?
+10. Explain bonding vs pairing in Bluetooth.
+    Pairing: Establish a trusted connection for the first time.
+    Bonding: Save the trusted relationship for future connections. 
+11. How do you handle multiple BLE connections simultaneously?
+    BLE peripherals (servers) can usually only connect to one client.
+    Android phones acting as clients can connect to ~4–7 BLE devices (varies by hardware).
 
-How do you manage Bluetooth connection states?
+    class MultiBleActivity : AppCompatActivity() {
 
-Explain bonding vs pairing in Bluetooth.
-
-How do you handle multiple BLE connections simultaneously?
+         private lateinit var bluetoothAdapter: BluetoothAdapter
+         private lateinit var bleScanner: BluetoothLeScanner
+         private val gattMap = mutableMapOf<BluetoothDevice, BluetoothGatt>()
+         private val scanResults = mutableSetOf<BluetoothDevice>()
+     
+         override fun onCreate(savedInstanceState: Bundle?) {
+             super.onCreate(savedInstanceState)
+     
+             val manager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+             bluetoothAdapter = manager.adapter
+             bleScanner = bluetoothAdapter.bluetoothLeScanner
+     
+             startScan()
+         }
+     
+         private fun startScan() {
+             val scanCallback = object : ScanCallback() {
+                 override fun onScanResult(callbackType: Int, result: ScanResult) {
+                     val device = result.device
+                     if (device.name != null && scanResults.add(device)) {
+                         Log.d("BLE_SCAN", "Discovered: ${device.name} - ${device.address}")
+                         connectToDevice(device)
+                     }
+                 }
+     
+                 override fun onScanFailed(errorCode: Int) {
+                     Log.e("BLE_SCAN", "Scan failed: $errorCode")
+                 }
+             }
+     
+             bleScanner.startScan(scanCallback)
+     
+             Handler(Looper.getMainLooper()).postDelayed({
+                 bleScanner.stopScan(scanCallback)
+                 Log.d("BLE_SCAN", "Scan stopped")
+             }, 10000) // Stop after 10 seconds
+         }
+     
+         private fun connectToDevice(device: BluetoothDevice) {
+             Log.d("BLE_CONNECT", "Connecting to ${device.address}")
+             val gatt = device.connectGatt(this, false, gattCallback)
+             gattMap[device] = gatt
+         }
+     
+         private val gattCallback = object : BluetoothGattCallback() {
+     
+             override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
+                 val device = gatt.device
+                 if (newState == BluetoothProfile.STATE_CONNECTED) {
+                     Log.d("BLE_GATT", "Connected to ${device.address}")
+                     gatt.discoverServices()
+                 } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                     Log.d("BLE_GATT", "Disconnected from ${device.address}")
+                     gatt.close()
+                     gattMap.remove(device)
+                 }
+             }
+     
+             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
+                 val device = gatt.device
+                 val services = gatt.services
+                 Log.d("BLE_GATT", "Services for ${device.address}:")
+                 for (service in services) {
+                     Log.d("BLE_GATT", " - Service: ${service.uuid}")
+                 }
+             }
+         }
+     
+         override fun onDestroy() {
+             super.onDestroy()
+             gattMap.values.forEach { it.close() }
+             gattMap.clear()
+         }
+     }
 
 🟩 Permissions, Security & Privacy (10 Questions)
 What are the implications of ACCESS_FINE_LOCATION in Bluetooth scanning?
