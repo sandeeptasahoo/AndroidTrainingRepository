@@ -645,7 +645,7 @@ Start BLE advertisement
      }
 
 🟩 Permissions, Security & Privacy (10 Questions)
-What are the implications of ACCESS_FINE_LOCATION in Bluetooth scanning?
+1. What are the implications of ACCESS_FINE_LOCATION in Bluetooth scanning?
 
 How has Bluetooth permission handling changed from Android 11 to Android 12/13?
 
