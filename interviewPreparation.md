@@ -41,7 +41,9 @@
         1. Configuration change happens for orientation change, locale language changes, keyboard availability, and screen size changes
         2. When configuration changes, onDestroy is called for the  current activity. A new instance is created with onCreate.
         3. The state can be restored manually using the SaveInstanceState in the onCreate bundle
-        4. @Override
+        4.
+     ``` java
+          @Override
           protected void onSaveInstanceState(Bundle outState) {
               outState.putString("inputText", editText.getText().toString());
               super.onSaveInstanceState(outState);
@@ -54,18 +56,18 @@
                   editText.setText(text);
               }
           }
-
 2. Intents and Broadcast Receivers:
    1. What is the difference between explicit and implicit intents?
       1. To navigate within the app activity, services are started where the target service or activity is specified. That's an explicit intent.
       2. In implicit intent, instead of specifying a specific activity, a general action to perform is declared, and Android finds the app that can handle it.
    2. How do you use BroadcastReceiver for system events (e.g., Bluetooth state changes)?
-      1. <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-      2. <receiver android:name=".BluetoothStateReceiver">
+      ``` xml
+      <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+      <receiver android:name=".BluetoothStateReceiver">
               <intent-filter>
                   <action android:name="android.bluetooth.adapter.action.STATE_CHANGED" />
               </intent-filter>
-          </receiver>
+      </receiver>
 3. Services:
    1. What are the types of Android Services?
       1. Foreground service:
@@ -99,9 +101,8 @@
 
    3. How do foreground services differ, especially in the context of Bluetooth scanning?
       1. If the app is in the background and tries to use Bluetooth scanning, the service will be killed silently, but if it runs with a foreground service (like a notification), it will not. It will be executed.
-      2. public class BluetoothScanService extends Service
-         
-              {
+``` java
+         public class BluetoothScanService extends Service {
               @Override
               public int onStartCommand(Intent intent, int flags, int startId) {
                   startForeground(1, buildNotification());
@@ -127,7 +128,7 @@
                   return null;
               }
           }
-
+```
 4. Permissions:
    1. Which permissions are required for Bluetooth, Wi-Fi Direct, or nearby device access?
       1. Bluetooth:
@@ -144,6 +145,7 @@
       - NEARBY_DEVICES (for BLE, Wi-Fi, or UWB)
       - BLUETOOTH_SCAN and ACCESS_FINE_LOCATION may still apply, depending on the implementation
    2. How do you handle runtime permission requests?
+      ``` java
       if (hasAllPermissions(this, permissions)) {
               startBluetoothScan();
           } else {
@@ -157,7 +159,8 @@
       runs even if the app crashes
       long-running task without load
    3. Threads and Async Tasks:
-      1. Thread is a java concept 
+      1. Thread is a java concept
+      ``` java
          Thread thread = new Thread(new Runnable() {
              @Override
              public void run() {
@@ -165,8 +168,9 @@
              }
          });
          thread.start();
-
-      2. Async tasks has been deprecated
+      ```
+      3. Async tasks has been deprecated
+         ``` java
          private class MyAsyncTask extends AsyncTask<Void, Integer, String> {
 
               @Override
@@ -216,6 +220,7 @@
 
 9. Dependency Injection:
    1. How do you inject BluetoothAdapter using Dagger/Hilt?
+``` kotlin
      @Module
      @InstallIn(SingletonComponent::class)
      object BluetoothModule {
@@ -228,6 +233,7 @@
                      .getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
              return bluetoothManager.adapter
          }
+
 
      @AndroidEntryPoint
      class MainActivity : AppCompatActivity() {
@@ -243,10 +249,12 @@
              }
          }
      }
-
+   
+```
 11. Jetpack Components:
     1. How can LiveData help in observing device state changes?
-       class BluetoothStateLiveData(context: Context) : LiveData<Boolean>() {
+    ``` kotlin
+        class BluetoothStateLiveData(context: Context) : LiveData<Boolean>() {
 
               private val appContext = context.applicationContext
               private val bluetoothReceiver = object : BroadcastReceiver() {
@@ -327,11 +335,14 @@ Obsolete or Limited Support Profiles
 
    3.  Code-level Differences
        Classic example
+       ``` java
        BluetoothDevice device = bluetoothAdapter.getRemoteDevice(address);
        BluetoothSocket socket = device.createRfcommSocketToServiceRecord(MY_UUID);
        socket.connect();
+       ```
 
        BLE Example
+       ``` java
        device.connectGatt(context, false, new BluetoothGattCallback() {
            @Override
            public void onConnectionStateChange(...) { ... }
@@ -366,7 +377,7 @@ Obsolete or Limited Support Profiles
    GATT operations are asynchronous – you must wait for callbacks.
    Only one operation (read/write/discover) should be active at a time.
    BLE scanning and connection require runtime permissions (e.g., BLUETOOTH_CONNECT, NEARBY_DEVICES).
-
+``` kotlin
    class MainActivity : AppCompatActivity() {
 
          private lateinit var bluetoothAdapter: BluetoothAdapter
@@ -457,12 +468,13 @@ Obsolete or Limited Support Profiles
          }
      }
 
-
+```
 8. What is the difference between GATT server and GATT client?
    GATT client: The device that requests data
    GATT server: The device that provides data
 
    gatt server code:
+   ``` kotlin 
    class GattServerService : Service() {
 
          private lateinit var bluetoothManager: BluetoothManager
@@ -523,6 +535,7 @@ Obsolete or Limited Support Profiles
      }
 
 Start BLE advertisement
+``` kotlin
      val advertiser = bluetoothAdapter.bluetoothLeAdvertiser
      val settings = AdvertiseSettings.Builder()
          .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
@@ -535,8 +548,9 @@ Start BLE advertisement
          .build()
      
      advertiser.startAdvertising(settings, data, advertiseCallback)
-
+```
 9. How do you scan for BLE devices in Android? What is the ScanCallback used for in BLE?
+    ``` kotlin
    val scanner = bluetoothAdapter.bluetoothLeScanner
    val scanCallback = object : ScanCallback() {
         override fun onScanResult(callbackType: Int, result: ScanResult) {
@@ -560,13 +574,13 @@ Start BLE advertisement
      
      scanner.startScan(filters, settings, scanCallback)
 
-10. Explain bonding vs pairing in Bluetooth.
+11. Explain bonding vs pairing in Bluetooth.
     Pairing: Establish a trusted connection for the first time.
     Bonding: Save the trusted relationship for future connections. 
-11. How do you handle multiple BLE connections simultaneously?
+12. How do you handle multiple BLE connections simultaneously?
     BLE peripherals (servers) can usually only connect to one client.
     Android phones acting as clients can connect to ~4–7 BLE devices (varies by hardware).
-
+     ``` kotlin 
     class MultiBleActivity : AppCompatActivity() {
 
          private lateinit var bluetoothAdapter: BluetoothAdapter
@@ -646,14 +660,67 @@ Start BLE advertisement
 
 🟩 Permissions, Security & Privacy (10 Questions)
 1. What are the implications of ACCESS_FINE_LOCATION in Bluetooth scanning?
+   Starting from Android 6.0 (API level 23):
+   1. Bluetooth scanning (especially BLE scanning) can reveal the user’s location indirectly, because many BLE beacons are deployed in fixed physical places (like shops, malls, etc.).
+   2. Therefore, Android treats BLE scanning as location-sensitive, and requires location permissions to proceed.
+   3. Even with permission granted, if location services (GPS) are turned off, BLE scanning may return nothing.
 
-How has Bluetooth permission handling changed from Android 11 to Android 12/13?
+2. How has Bluetooth permission handling changed from Android 11 to Android 12/13?
+   1. Android 11 has
+      1. BLUETOOTH, ACCESS_FINE_LOCATION : Ble scan
+      2. BLUETOOTH, BLUETOOTH_ADMIN : Connect to device
+      3. BLUETOOTH_ADMIN : Advertise (be discoverable)
+      4. ACCESS_FINE_LOCATION : always needed
+   2. android 12+ has
+      1. BLUETOOTH_SCAN (+ optional ACCESS_FINE_LOCATION) : Ble scan
+      2. BLUETOOTH_CONNECT : connect device
+      3. BLUETOOTH_ADVERTISE : Advertise (be discoverable)
+      4. ACCESS_FINE_LOCATION : can be avoided with android:usesPermissionFlags="neverForLocation"
 
-What runtime permissions are mandatory for BLE advertising?
+3. How does Android handle MAC address randomization for BLE scanning?
+   1. Advertisers (BLE peripherals) can also randomize their MAC using non-resolvable or resolvable private addresses.
+   2. If the advertiser is a paired (bonded) device, Android may use the static address for identification.
+   3. You cannot rely on MAC addresses for BLE device identification. Instead, use device name, service UUIDs, or manufacturer data.
+   4. Don't store MAC addresses to reconnect — use BluetoothDevice.getAddress(), but understand it might be randomized and change over time.
+   5. Bonded (paired) devices: Android may use the real MAC address.
 
-How does Android handle MAC address randomization for BLE scanning?
-
-How do you ensure secure communication over Bluetooth?
+4. How do you ensure secure communication over Bluetooth?
+   1. for transmission using secure socket with Serial port Profile (SPP) (UUID) secures the communication
+   ```
+     BluetoothSocket socket = device.createRfcommSocketToServiceRecord(MY_UUID);
+   ```
+   2. Authenticated pairing with encryption and Authenticated LE Secure Connections can secure ble connection.
+   3. Even with BLE encryption, consider end-to-end application-layer encryption, such as:
+      1. AES/GCM
+         ```
+         fun encryptMessage(msg: String, secretKey: SecretKeySpec): ByteArray {
+              val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+              cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+              return cipher.doFinal(msg.toByteArray())
+          }
+      3. Public-key cryptography
+      4. HMAC for message integrity
+         HMAC uses a hash function (e.g., SHA-256) + a secret key.
+         It ensures:
+         ✅ Message hasn't been tampered with
+         ✅ Message came from a trusted source (with the key)
+         ``` kotlin 
+         import javax.crypto.Mac
+         import javax.crypto.spec.SecretKeySpec
+          
+          fun generateHmacSHA256(message: String, secret: String): String {
+              val keySpec = SecretKeySpec(secret.toByteArray(), "HmacSHA256")
+              val mac = Mac.getInstance("HmacSHA256")
+              mac.init(keySpec)
+              val hmacBytes = mac.doFinal(message.toByteArray())
+              return hmacBytes.joinToString("") { "%02x".format(it) }
+          }
+         
+          val message = "temperature=26.5"
+          val secretKey = "my_ble_secret_key_123"
+          
+          val hmac = generateHmacSHA256(message, secretKey)
+          println("HMAC = $hmac")
 
 What role does BluetoothDevice.getUuids() play in secure discovery?
 
