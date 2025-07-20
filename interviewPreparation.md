@@ -910,15 +910,129 @@ Start BLE advertisement
         3. Receiving scan response
         4. Merging both into ScanResult
 
-4. How do you manage advertising on devices with restricted background access?
+4. How can you avoid conflicts with multiple advertisers?
+   1. Some devices allow 2-3 advertisers, not more than that
+   2. It's better to check available advertisers before advertising
+``` java 
+      BluetoothLeAdvertiser advertiser = BluetoothAdapter.getDefaultAdapter().getBluetoothLeAdvertiser();
+      if (!BluetoothAdapter.getDefaultAdapter().isMultipleAdvertisementSupported()) {
+         Log.e("BLE", "Multiple advertisement not supported");
+      }
+```
+   4. Before starting, we need to stop the old advertiser
+      advertiser.stopAdvertising(advertiseCallback);
+   5. 
 
-How can you avoid conflicts with multiple advertisers?
+5. What is the use of ScanFilter and ScanSettings?
+   ``` kotlin
+   private fun startBleScan() {
+         val serviceUuid = ParcelUuid.fromString("0000180D-0000-1000-8000-00805F9B34FB") // Heart Rate UUID
+     
+         // 1. Set ScanFilter for specific service UUID
+         val filters = listOf(
+             ScanFilter.Builder()
+                 .setServiceUuid(serviceUuid)
+                 .build()
+         )
+     
+         // 2. Configure ScanSettings with:
+         // - SCAN_MODE_LOW_POWER (or BALANCED/LOW_LATENCY)
+         // - Report results every 5 seconds
+         // - Callback when first match is found
+         // - Up to 3 matches reported per filter
+         val settings = ScanSettings.Builder()
+             .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)          // Use LOW_POWER for battery saving
+             .setReportDelay(5000)                                   // 5 seconds delay, batching results
+             .setCallbackType(ScanSettings.CALLBACK_TYPE_FIRST_MATCH) // Callback when first match is found
+             .setNumOfMatches(ScanSettings.MATCH_NUM_FEW_ADVERTISEMENT) // Up to 3 matches per filter
+             .build()
+     
+         bluetoothLeScanner.startScan(filters, settings, scanCallback)
+     }
+   ```
+   1. setReportDelay(5000): Results will be batched and delivered every 5 seconds.
+   2. setCallbackType(CALLBACK_TYPE_FIRST_MATCH): Fires callback only for first match (reduces redundant processing).
+   3. setNumOfMatches(MATCH_NUM_FEW_ADVERTISEMENT): System reports up to 3 matches per filter.
 
-What is the use of ScanFilter and ScanSettings?
+6. How do you detect and filter nearby BLE beacons?
+   ``` java
+   new ScanFilter.Builder()
+    .setManufacturerData(manufacturerId, manufacturerData, manufacturerDataMask)
+    .build();
+7. What strategies can optimize scanning frequency to save battery?
+   1. ``` java
+        new Handler().postDelayed(() -> {
+         scanner.stopScan(callback);
+          }, 10000); 
+   2. ``` java
+      new ScanSettings.Builder()
+         .setDeviceAddress("XX:XX:XX:XX:XX:XX") 
+         .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+         .setReportDelay(5000) // Deliver results every 5 seconds
+         .build();
+   3. example of using batch scanning
+      ``` java
+      public class BleScannerActivity extends AppCompatActivity {
 
-How do you detect and filter nearby BLE beacons?
+              private BluetoothLeScanner bleScanner;
+              private ScanCallback scanCallback;
+          
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+          
+                  BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+                  if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
+                      bleScanner = bluetoothAdapter.getBluetoothLeScanner();
+                      startBatchScan();
+                  } else {
+                      Toast.makeText(this, "Bluetooth not available or enabled", Toast.LENGTH_SHORT).show();
+                  }
+              }
+          
+              private void startBatchScan() {
+                  // Configure Scan Settings
+                  ScanSettings settings = new ScanSettings.Builder()
+                          .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+                          .setReportDelay(5000) // Report results every 5 seconds
+                          .build();
+          
+                  // Optionally configure filters
+                  List<ScanFilter> filters = new ArrayList<>();
+                  // e.g., ScanFilter for specific UUID/device
+          
+                  // Define ScanCallback
+                  scanCallback = new ScanCallback() {
+                      @Override
+                      public void onBatchScanResults(List<ScanResult> results) {
+                          for (ScanResult result : results) {
+                              BluetoothDevice device = result.getDevice();
+                              int rssi = result.getRssi();
+                              Log.d("BLE", "Device: " + device.getAddress() + ", RSSI: " + rssi);
+                              // You can also access advertisement data: result.getScanRecord()
+                          }
+                      }
+          
+                      @Override
+                      public void onScanFailed(int errorCode) {
+                          Log.e("BLE", "Scan failed with error: " + errorCode);
+                      }
+                  };
+          
+                  bleScanner.startScan(filters, settings, scanCallback);
+          
+                  // Optional: Stop scan after a timeout
+                  new Handler(Looper.getMainLooper()).postDelayed(() -> stopScan(), 15000);
+              }
+          
+              private void stopScan() {
+                  if (bleScanner != null && scanCallback != null) {
+                      bleScanner.stopScan(scanCallback);
+                      Log.d("BLE", "Scan stopped");
+                  }
+              }
+          }
 
-What strategies can optimize scanning frequency to save battery?
 
 🟥 Data Transmission & GATT (15 Questions)
 How do you read and write characteristics over BLE?
