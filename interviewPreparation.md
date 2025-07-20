@@ -722,28 +722,195 @@ Start BLE advertisement
           val hmac = generateHmacSHA256(message, secretKey)
           println("HMAC = $hmac")
 
-What role does BluetoothDevice.getUuids() play in secure discovery?
+5. What role does BluetoothDevice.getUuids() play in secure discovery?
+   1. Returns an array of ParcelUuid objects.
+   2. Each UUID represents a Bluetooth service that the device supports (e.g., A2DP, HFP, custom SPP services).
+   3. Helps the initiating device understand what functionality the remote device provides.
+       ``` java
+      ParcelUuid[] uuids = bluetoothDevice.getUuids();
+   4. for BLE users
+       ``` java
+      bluetoothGatt.discoverServices();
+      BluetoothGattService.getUuid().
+   5. demo code
+      ``` java
+          IntentFilter filter1 = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+          IntentFilter filter2 = new IntentFilter(BluetoothDevice.ACTION_UUID);
+          registerReceiver(receiver, filter1);
+          registerReceiver(receiver, filter2);
 
-What changes were introduced in Android 10 related to background location access?
+          BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+          if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
+              bluetoothAdapter.startDiscovery();
+          }
 
-How can you request Bluetooth and location permissions dynamically?
+           private final BroadcastReceiver receiver = new BroadcastReceiver() {
+              public void onReceive(Context context, Intent intent) {
+                  String action = intent.getAction();
+                  if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                      BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                      if (device != null) {
+                          Log.d("Device Found", device.getName() + " - " + device.getAddress());
+          
+                          // Optional: Wait for UUIDs to be fetched
+                          device.fetchUuidsWithSdp(); // Triggers ACTION_UUID
+                      }
+                  } else if (BluetoothDevice.ACTION_UUID.equals(action)) {
+                      BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                      Parcelable[] uuidExtra = intent.getParcelableArrayExtra(BluetoothDevice.EXTRA_UUID);
+                      if (uuidExtra != null) {
+                          for (Parcelable p : uuidExtra) {
+                              ParcelUuid uuid = (ParcelUuid) p;
+                              if (uuid.getUuid().toString().equals("00001101-0000-1000-8000-00805F9B34FB")) {
+                                  Log.d("Target Device", "Found matching UUID device: " + device.getName());
+                                  // You can now initiate secure connection
+                              }
+                          }
+                      }
+                  }
+              }
+          };
+   6. for ble
+       ``` java
+          BluetoothLeScanner scanner = BluetoothAdapter.getDefaultAdapter().getBluetoothLeScanner();
+          UUID targetUuid = UUID.fromString("0000180D-0000-1000-8000-00805F9B34FB"); // Heart Rate
+          ScanFilter filter = new ScanFilter.Builder()
+                  .setServiceUuid(new ParcelUuid(targetUuid))
+                  .build();
+          
+          List<ScanFilter> filters = new ArrayList<>();
+          filters.add(filter);
+          
+          ScanSettings settings = new ScanSettings.Builder()
+                  .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
+                  .build();
+          
+          scanner.startScan(filters, settings, scanCallback);
 
-How do you revoke Bluetooth permissions once granted?
+           private final ScanCallback scanCallback = new ScanCallback() {
+              @Override
+              public void onScanResult(int callbackType, ScanResult result) {
+                  BluetoothDevice device = result.getDevice();
+                  Log.d("BLE Device", "Found device: " + device.getName());
+          
+                  // Optional: Connect and verify services
+                  connectToDevice(device);
+              }
+          };
 
-How would you explain Bluetooth security risks to a product manager?
+           private void connectToDevice(BluetoothDevice device) {
+              device.connectGatt(context, false, gattCallback);
+          }
+          
+          private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
+              @Override
+              public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+                  if (newState == BluetoothProfile.STATE_CONNECTED) {
+                      gatt.discoverServices();
+                  }
+              }
+          
+              @Override
+              public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+                  for (BluetoothGattService service : gatt.getServices()) {
+                      if (service.getUuid().equals(UUID.fromString("0000180D-0000-1000-8000-00805F9B34FB"))) {
+                          Log.d("Service Found", "Heart Rate service available!");
+                          // Now you can interact with the characteristics
+                      }
+                  }
+              }
+          };
+   7. for ble with byte array
+       ``` java
+       ScanCallback scanCallback = new ScanCallback() {
+              @Override
+              public void onScanResult(int callbackType, ScanResult result) {
+                  ScanRecord scanRecord = result.getScanRecord();
+                  if (scanRecord != null) {
+                      byte[] rawBytes = scanRecord.getBytes();  // ← This is your raw advertisement packet
+          
+                      // Example: print in hex
+                      StringBuilder sb = new StringBuilder();
+                      for (byte b : rawBytes) {
+                          sb.append(String.format("%02X ", b));
+                      }
+                      Log.d("BLE-ADV", "Advertisement Bytes: " + sb.toString());
+                  }
+              }
+          };
+     
+6. What changes were introduced in Android 10 related to background location access?
+   If the application is running in the background, the app should request ACCESS_BACKGROUND_LOCATION.
+
+7. How do you revoke Bluetooth permissions once granted?
+   If Bluetooth is turned off, and I want to open the settings page for the user
+   I can send an intent to the settings page and launch it
+   ``` java
+     Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+     intent.setData(Uri.parse("package:" + context.getPackageName()));
+     context.startActivity(intent);
 
 🟨 BLE Advertising & Scanning (10 Questions)
-How do you implement BLE advertising in Android?
+1. How do you implement BLE advertising in Android?
+   ``` kotlin
+     val advertiser = BluetoothAdapter.getDefaultAdapter().bluetoothLeAdvertiser
+     val settings = AdvertiseSettings.Builder()
+         .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+         .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+         .setConnectable(false)
+         .build()
+     
+     val data = AdvertiseData.Builder()
+         .setIncludeDeviceName(true)
+         .addServiceUuid(ParcelUuid(UUID.fromString("0000180D-0000-1000-8000-00805f9b34fb"))) // Heart Rate UUID
+         .addManufacturerData(0x1234, byteArrayOf(0x01, 0x02)) // Optional custom data
+         .build()
+     
+     advertiser.startAdvertising(settings, data, object : AdvertiseCallback() {
+         override fun onStartSuccess(settingsInEffect: AdvertiseSettings) {
+             Log.d("BLE", "Advertising started")
+         }
+     
+         override fun onStartFailure(errorCode: Int) {
+             Log.e("BLE", "Advertising failed: $errorCode")
+         }
+     })
 
-What is AdvertiseSettings, and how does it affect battery consumption?
+        val notification = NotificationCompat.Builder(this, "ble_channel")
+         .setContentTitle("BLE Advertising")
+         .setSmallIcon(R.drawable.ic_ble)
+         .build()
+     
+          startForegroundService(Intent(this, BleAdvertiserService::class.java))
 
-How do you configure AdvertiseData?
+2. What is AdvertiseSettings, and how does it affect battery consumption?
+   following parameter can affect power decipitation
+   1. setAdvertiseMode(): Sets the frequency of advertisement packets
+   2. setTxPowerLevel(): Sets transmission power (i.e., how far the signal can reach)
+   3. setConnectable(): Whether your device allows connections
+   4. setTimeout(): Duration of advertising
 
-What are the limitations of BLE advertising payload size?
+3. What are the limitations of BLE advertising payload size?
+   1. Each packet size can be max upto 31 bytes
+   2. there is 2 segments of pay load
+      1. Advertisement packet: which is sent initially in each advertisement (31 bytes)
+      2. Scan Response packet: which is sent upon request (31 bytes)
+      ``` kotlin
+          val advertiseData = AdvertiseData.Builder()
+              .setIncludeDeviceName(true)
+              .addServiceUuid(ParcelUuid(YOUR_UUID))
+              .build()
+          
+          val scanResponse = AdvertiseData.Builder()
+              .addManufacturerData(0x1234, byteArrayOf(0x01, 0x02))
+              .build()
+     3. Android’s BLE stack handles:
+        1. Receiving initial advertisement
+        2. Sending scan request (if peripheral allows it)
+        3. Receiving scan response
+        4. Merging both into ScanResult
 
-How do you detect when advertising has started successfully?
-
-How do you manage advertising on devices with restricted background access?
+4. How do you manage advertising on devices with restricted background access?
 
 How can you avoid conflicts with multiple advertisers?
 
