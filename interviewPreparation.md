@@ -1035,9 +1035,63 @@ Start BLE advertisement
 
 
 🟥 Data Transmission & GATT (15 Questions)
-How do you read and write characteristics over BLE?
+1. What is a BLE service and characteristic?
+     ``` java
+     private final UUID BATTERY_SERVICE_UUID = UUID.fromString("0000180F-0000-1000-8000-00805f9b34fb");
+     private final UUID BATTERY_LEVEL_UUID = UUID.fromString("00002A19-0000-1000-8000-00805f9b34fb");
+     
+     private BluetoothGatt bluetoothGatt;
+     
+     // Connect to GATT server
+     private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
+         @Override
+         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                 gatt.discoverServices();
+             }
+         }
+     
+         @Override
+         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+             BluetoothGattService batteryService = gatt.getService(BATTERY_SERVICE_UUID);
+             if (batteryService != null) {
+                 BluetoothGattCharacteristic batteryLevelChar = batteryService.getCharacteristic(BATTERY_LEVEL_UUID);
+     
+                 // Read battery level once
+                 gatt.readCharacteristic(batteryLevelChar);
+     
+                 // Enable notifications
+                 gatt.setCharacteristicNotification(batteryLevelChar, true);
+     
+                 BluetoothGattDescriptor descriptor = batteryLevelChar.getDescriptor(
+                         UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")); // Client Characteristic Configuration
+                 if (descriptor != null) {
+                     descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                     gatt.writeDescriptor(descriptor);
+                 }
+             }
+         }
+     
+         @Override
+         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+             if (BATTERY_LEVEL_UUID.equals(characteristic.getUuid())) {
+                 int batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+                 Log.d("BLE", "Battery Level: " + batteryLevel + "%");
+             }
+         }
+     
+         @Override
+         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+             if (BATTERY_LEVEL_UUID.equals(characteristic.getUuid())) {
+                 int batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+                 Log.d("BLE", "Battery Level (notified): " + batteryLevel + "%");
+             }
+         }
+     };
+     ```
+     1. through gatt connection service is discovered first
+     2. through service read or write access is asked and used 
 
-What is a BLE service and characteristic?
 
 How do you handle notifications and indications in BLE?
 
