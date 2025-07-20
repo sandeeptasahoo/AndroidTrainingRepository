@@ -1093,31 +1093,228 @@ Start BLE advertisement
      2. through service read or write access is asked and used 
 
 
-How do you handle notifications and indications in BLE?
+2. How do you handle notifications and indications in BLE?
+   notification or indicator is a feature in which notification will come to the service subscriber and in indiaction the client who is service surscriber have to return a confirmation
+   ``` java
+     private static final UUID BATTERY_SERVICE_UUID = UUID.fromString("0000180F-0000-1000-8000-00805f9b34fb");
+     private static final UUID BATTERY_LEVEL_UUID = UUID.fromString("00002A19-0000-1000-8000-00805f9b34fb");
+     private static final UUID CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+     
+     @Override
+     public void onServicesDiscovered(BluetoothGatt gatt, int status) {
+         BluetoothGattService service = gatt.getService(BATTERY_SERVICE_UUID);
+         BluetoothGattCharacteristic characteristic = service.getCharacteristic(BATTERY_LEVEL_UUID);
+     
+         // Step 1: Enable local notifications
+         gatt.setCharacteristicNotification(characteristic, true);
+     
+         // Step 2: Write to CCCD to enable notifications or indications
+         BluetoothGattDescriptor descriptor = characteristic.getDescriptor(CCCD_UUID);
+         descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE); // or ENABLE_INDICATION_VALUE
+         gatt.writeDescriptor(descriptor);
+     }
+      @Override
+     public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+         if (BATTERY_LEVEL_UUID.equals(characteristic.getUuid())) {
+             int level = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+             Log.d("BLE", "Battery Level changed: " + level + "%");
+         }
+     }
 
-How do you implement a GATT server on Android?
 
-What are the limits of BLE throughput on Android?
+3. How do you implement a GATT server on Android?
+   1. it need to have 4 component
+      1. BluetoothGattServer
+      2. BluetoothGattService
+      3. BluetoothGattCharacteristic
+      4. BluetoothGattDescriptor
+   ``` java
+     BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+     BluetoothAdapter bluetoothAdapter = bluetoothManager.getAdapter();
+     BluetoothGattServer gattServer = bluetoothManager.openGattServer(context, gattServerCallback);
+     UUID SERVICE_UUID = UUID.fromString("0000180F-0000-1000-8000-00805f9b34fb"); // Battery
+     UUID CHAR_UUID = UUID.fromString("00002A19-0000-1000-8000-00805f9b34fb");  // Battery level
+     
+     BluetoothGattService service = new BluetoothGattService(SERVICE_UUID, BluetoothGattService.SERVICE_TYPE_PRIMARY);
+     
+     BluetoothGattCharacteristic batteryLevelChar = new BluetoothGattCharacteristic(
+         CHAR_UUID,
+         BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+         BluetoothGattCharacteristic.PERMISSION_READ
+     );
+     
+     // Optional: Add CCCD descriptor
+     UUID CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+     BluetoothGattDescriptor cccd = new BluetoothGattDescriptor(CCCD_UUID, BluetoothGattDescriptor.PERMISSION_READ | BluetoothGattDescriptor.PERMISSION_WRITE);
+     batteryLevelChar.addDescriptor(cccd);
+     
+     service.addCharacteristic(batteryLevelChar);
+     gattServer.addService(service);
 
-How do you handle MTU size changes in BLE?
+     BluetoothLeAdvertiser advertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
 
-How do you handle BLE connection priority?
+     AdvertiseSettings settings = new AdvertiseSettings.Builder()
+         .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+         .setConnectable(true)
+         .setTimeout(0)
+         .build();
+     
+     AdvertiseData data = new AdvertiseData.Builder()
+         .setIncludeDeviceName(true)
+         .addServiceUuid(new ParcelUuid(SERVICE_UUID))
+         .build();
+     
+     advertiser.startAdvertising(settings, data, advertiseCallback);
 
-What is the role of BluetoothGattCallback?
+     BluetoothGattServerCallback gattServerCallback = new BluetoothGattServerCallback() {
+         @Override
+         public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
+             Log.d("GATT", "Device connected: " + device.getAddress());
+         }
+     
+         @Override
+         public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset,
+                                                 BluetoothGattCharacteristic characteristic) {
+             if (CHAR_UUID.equals(characteristic.getUuid())) {
+                 byte[] value = new byte[]{50}; // 50% battery
+                 gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
+             }
+         }
+     
+         @Override
+         public void onDescriptorWriteRequest(BluetoothDevice device, int requestId,
+                                              BluetoothGattDescriptor descriptor,
+                                              boolean preparedWrite, boolean responseNeeded,
+                                              int offset, byte[] value) {
+             // Enable notifications
+             if (CCCD_UUID.equals(descriptor.getUuid())) {
+                 descriptor.setValue(value);
+                 if (responseNeeded) {
+                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
+                 }
+             }
+         }
+     };
 
-What causes GATT operations to fail intermittently?
+     batteryLevelChar.setValue(new byte[]{80}); // new battery level
+     gattServer.notifyCharacteristicChanged(connectedDevice, batteryLevelChar, false);
 
-How do you debug BLE data transmission issues?
+4. What are the limits of BLE throughput on Android?
+   1. | Factor                                | Value                                         |
+   2. | ------------------------------------- | --------------------------------------------- |
+   3. | Max ATT MTU size                      | 517 bytes (Android 5.0+ via request)          |
+   4. | Max data per notification             | \~244 bytes (ATT\_MTU - 3)                    |
+   5. | Connection interval (min)             | \~7.5 ms (ideal)                              |
+   6. | Notifications per connection interval | 4–6 (theoretically)                           |
+   7. | Theoretical Max Throughput            | \~1 Mbps (BLE 4.2 with Data Length Extension) |
+   8. | Realistic Android Throughput          | **80–150 kbps** (varies by hardware + OS)     |
 
-How do you implement acknowledgment for BLE writes?
+5. How do you handle MTU (Maximum Transmission Unit) size changes in BLE?
+   1. MTU defines the maximum size (in bytes) of a single ATT (Attribute Protocol) packet.
+   2. Default MTU is 23 bytes (20 bytes payload).
+   3. Can be increased up to 517 bytes (since Android 5.0, API 21).
+   4. Both client and server must agree on the negotiated MTU.
+     ``` java
+     bluetoothGatt.getMtu()
+     bluetoothGatt.requestMtu(517);  // Request max supported MTU
 
-How can you queue GATT operations reliably?
+     @Override
+     public void onMtuChanged(BluetoothGatt gatt, int mtu, int status) {
+         super.onMtuChanged(gatt, mtu, status);
+         if (status == BluetoothGatt.GATT_SUCCESS) {
+             Log.d("BLE", "MTU changed to: " + mtu);
+             // Now you can send larger packets based on new MTU
+         } else {
+             Log.d("BLE", "MTU change failed");
+         }
+     }
 
-What are the typical causes of BLE disconnections?
+     ```
+6. How do you handle BLE connection priority?
+   ``` java
+   BluetoothGatt gatt = device.connectGatt(context, false, new BluetoothGattCallback() {
+         @Override
+         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
+             if (newState == BluetoothProfile.STATE_CONNECTED) {
+                 Log.d("BLE", "Connected. Requesting high priority...");
+                 gatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH);
+                 gatt.discoverServices(); // You can still discover services afterward
+             }
+         }
+     });
+   ```
 
-How can you ensure reliable large data transfer over BLE?
+   1. | Priority Type                   | Purpose                                 | Use Case Example                                      |
+   2. | ------------------------------- | --------------------------------------- | ----------------------------------------------------- |
+   3. | `CONNECTION_PRIORITY_HIGH`      | Low latency, high frequency updates     | Real-time apps (heart rate monitor, game controllers) |
+   4. | `CONNECTION_PRIORITY_BALANCED`  | Default setting, balanced performance   | Most general use cases                                |
+   5. | `CONNECTION_PRIORITY_LOW_POWER` | Infrequent communication, saves battery | Background sensors, data logging                      |
 
-Can Android GATT client connect to multiple servers at once?
+6. What causes GATT operations to fail intermittently?
+   1. GATT can fail due to simultaneous GATT operations, solution: 
+      1. Queue operations manually.
+      2. Start the next GATT operation only after the previous one completes.
+   2. poor signal, solution:
+      1. Monitor RSSI (readRemoteRssi()).
+      2. Reduce distance or interference.
+   3. OS-Level Bluetooth Stack Issues
+      1. Call BluetoothGatt.disconnect() and close() before reconnecting.
+      2. Wait ~1 second before retrying a connection.
+   4. MTU Negotiation Delays or Mismatch
+      1. Use requestMtu() and handle onMtuChanged() before large transfers.
+   5. BLE allows only one operation at a time. Failing to wait for a response causes drops or silent failures.
+      ``` java
+      int props = characteristic.getProperties();
+      boolean canWrite = (props & BluetoothGattCharacteristic.PROPERTY_WRITE) > 0;
+
+7. How do you debug BLE data transmission issues?
+   Use Nordic’s nRF Connect to validate BLE operations.
+
+8. How do you implement acknowledgment for BLE writes?
+   peripheral device can send an acknowledgment via characteristics change
+   ``` java
+
+     BluetoothGattCharacteristic characteristic = ...;
+     characteristic.setValue(data);
+     characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT); // <-- ACK
+     bluetoothGatt.writeCharacteristic(characteristic);
+      
+   @Override
+     public void onCharacteristicChanged(BluetoothGatt gatt,
+                                          BluetoothGattCharacteristic characteristic) {
+         byte[] value = characteristic.getValue();
+         if (Arrays.equals(value, "ACK".getBytes())) {
+             Log.d("BLE", "ACK received from peripheral");
+         }
+     }
+
+
+9. How can you queue GATT operations reliably?
+   Queuing GATT operations is critical in Android BLE development because GATT operations must be executed sequentially — only one operation (read/write/descriptor request/etc.) can be in progress at a time. If you issue multiple calls back-to-back, many will fail silently or return GATT_BUSY.
+   
+
+10. What are the typical causes of BLE disconnections?
+    can be caused by
+    1. low battery
+    2. interference
+    3. out of range
+    4. physical obstacle
+    5. GATT over load
+    6. ANR
+    7. missing permission
+    8. bluetooth stack bugs
+    9. bluetooth restart
+
+11. How can you ensure reliable large data transfer over BLE?
+    1. checking the max mtu limit
+    2. based on that splitting the data
+    3. writing the data in small fragments
+    4. the smaller the fragment lesser the battery drainage and higher the time for transmission. 
+
+12. Can Android GATT client connect to multiple servers at once?
+    1. 10+ server can be connected at once
+    2. but on each server, read and write operations can be done sequentially, not simultaneously.
+    3. Each connection has its own BluetoothGatt instance.
 
 🟦 Bluetooth Classic (10 Questions)
 How do you connect to Bluetooth Classic devices in Android?
