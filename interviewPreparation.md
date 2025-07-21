@@ -1462,17 +1462,83 @@ Start BLE advertisement
      // To close:
      client.disconnect()
 
-What is SDP, and how does Android use it?
+5. What is SDP, and how does Android use it?
+   1. SDP (Service Discovery Protocol) is a key protocol in Bluetooth that allows devices to discover the services offered by other devices, along with the characteristics of those services.
+   2. SDP is part of the Bluetooth Classic stack (not BLE), and it operates before a Bluetooth connection is fully established.
+   3. When acting as a client, Android uses SDP implicitly when you call:
+      ``` kotlin
+          val device: BluetoothDevice = // already bonded device
+          device.fetchUuidsWithSdp()
+          
+          val receiver = object : BroadcastReceiver() {
+              override fun onReceive(context: Context?, intent: Intent?) {
+                  val action = intent?.action
+                  if (BluetoothDevice.ACTION_UUID == action) {
+                      val uuids = intent.getParcelableArrayExtra(BluetoothDevice.EXTRA_UUID)
+                      uuids?.forEach { uuid ->
+                          Log.d("Bluetooth", "Discovered UUID: ${(uuid as ParcelUuid).uuid}")
+                      }
+                  }
+              }
+          }
 
-How do you handle a failed Bluetooth Classic connection?
+6. How do you handle a failed Bluetooth Classic connection?
+   1. Device not in range or turned off
+   2. UUID mismatch or not exposed via SDP
+   3. Device not paired or bonded
+   4. Socket already in use
+   5. Timeout or connection rejected
+   6. Bluetooth permission or adapter issue
+     ``` kotlin
+     fun retryConnect(device: BluetoothDevice, uuid: UUID, retries: Int = 3): BluetoothSocket? {
+         repeat(retries) { attempt ->
+             val socket = safeConnect(device, uuid)
+             if (socket != null) return socket
+             Thread.sleep((attempt + 1) * 1000L)
+         }
+         return null
+     }
+7. What is RFCOMM, and how does it relate to Bluetooth Classic?
+   RFCOMM (Radio Frequency Communication) is a protocol that emulates serial port communication over the Bluetooth Classic stack. It allows Bluetooth devices to communicate in a way similar to RS-232 serial cables, making it especially useful for legacy systems and serial-based peripherals like GPS modules, barcode scanners, or Arduino devices.
 
-What is RFCOMM, and how does it relate to Bluetooth Classic?
+8. How do you perform Bluetooth discovery using startDiscovery()?
+   ``` kotlin
+   class DeviceDiscoveryReceiver : BroadcastReceiver() {
+         override fun onReceive(context: Context, intent: Intent) {
+             when (intent.action) {
+                 BluetoothDevice.ACTION_FOUND -> {
+                     val device: BluetoothDevice =
+                         intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)!!
+                     Log.d("BT_DISCOVERY", "Found: ${device.name} - ${device.address}")
+                 }
+                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
+                     Log.d("BT_DISCOVERY", "Discovery finished")
+                 }
+             }
+         }
+     }
+     
+     // Usage in Activity or ViewModel
+     val bluetoothAdapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
+     
+     // Register receiver
+     val filter = IntentFilter().apply {
+         addAction(BluetoothDevice.ACTION_FOUND)
+         addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
+     }
+     val receiver = DeviceDiscoveryReceiver()
+     context.registerReceiver(receiver, filter)
+     
+     // Start discovery
+     if (bluetoothAdapter?.isDiscovering == true) {
+         bluetoothAdapter.cancelDiscovery()
+     }
+     bluetoothAdapter?.startDiscovery()
 
-How do you perform Bluetooth discovery using startDiscovery()?
-
-How can Classic and BLE be used in parallel?
-
-What are the power implications of using Classic vs BLE?
+9. How can Classic and BLE be used in parallel?
+   Yes — many Android devices support both Bluetooth Classic and BLE and can use both in parallel, but:
+   1. Some devices may prioritize Classic over BLE or vice versa.
+   2. Bluetooth hardware has a shared radio, so simultaneous usage is multiplexed, which may degrade performance.
 
 🟧 Nearby, Wi-Fi Direct, and Other D2D Protocols (15 Questions)
 What is the Nearby Connections API and how is it used?
@@ -1496,8 +1562,8 @@ How does device discovery work with Google's Nearby API?
 How do you handle group formation in Wi-Fi Direct?
 
 🟪 System Behavior, Lifecycle, and Power (10 Questions)
-How does Doze mode affect Bluetooth operations?
-
+1. How does Doze mode affect Bluetooth operations?
+   Doze mode, introduced in Android 6.0 (API 23), is designed to reduce battery usage by restricting background activity when the device is idle. However, it has specific implications for Bluetooth operations, particularly those running in the background.
 What is the impact of battery optimization on BLE scanning?
 
 How do you ensure reliable Bluetooth operations across configuration changes?
