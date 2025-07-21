@@ -1317,13 +1317,150 @@ Start BLE advertisement
     3. Each connection has its own BluetoothGatt instance.
 
 🟦 Bluetooth Classic (10 Questions)
-How do you connect to Bluetooth Classic devices in Android?
+1. How do you connect to Bluetooth Classic devices in Android?
+   1. After discovering the Bluetooth device through broadcasting
+      ``` java
+      // server side code to broadcast the data
+      
+           BluetoothServerSocket serverSocket = bluetoothAdapter.listenUsingRfcommWithServiceRecord("MyApp", SPP_UUID);
+           //listenUsingInsecureRfcommWithServiceRecord() — no pairing required.
 
-What is the role of BluetoothSocket and BluetoothServerSocket?
+      BluetoothSocket socket = serverSocket.accept();  // Blocking call
+           InputStream in = socket.getInputStream();
+          OutputStream out = socket.getOutputStream();
+           outputStream.write("Hello Device".getBytes());
+              // Read response (blocking)
+              int data = inputStream.read();
 
-What are the limitations of Bluetooth Classic data rates?
+      serverSocket.close();
 
-How do you manage threading for BluetoothClassic communication?
+
+      // client side code to get the data 
+           private static final UUID SPP_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+           Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
+          for (BluetoothDevice device: pairedDevices) {
+              Log.d("BT", "Paired Device: " + device.getName() + ", " + device.getAddress());
+          }
+
+           BluetoothDevice device = bluetoothAdapter.getRemoteDevice("XX:XX:XX:XX:XX:XX"); // MAC Address
+          BluetoothSocket socket = null;
+          
+          try {
+              socket = device.createRfcommSocketToServiceRecord(SPP_UUID);
+              socket.connect();  // Blocking call
+              OutputStream outputStream = socket.getOutputStream();
+              InputStream inputStream = socket.getInputStream();
+          
+              outputStream.write("Hello Device".getBytes());
+              
+              // Read response (blocking)
+              int data = inputStream.read();
+              
+          } catch (IOException e) {
+              e.printStackTrace();
+          } finally {
+              try {
+                  if (socket != null) socket.close();
+              } catch (IOException e) {
+                  e.printStackTrace();
+              }
+          }
+
+
+2. What is the role of BluetoothSocket and BluetoothServerSocket?
+   bluetoothSocket act as server and BluetoothServerSocket act as client 
+
+3. What are the limitations of Bluetooth Classic data rates?
+   1. it has 3 rates
+      1. basic rate: 721 knps
+      2. Enhanced Data Rate 2: 1.3 Mbps
+      3. Enhanced Data Rate 3: 2.1 Mbps
+   2. Overhead and Latency
+   3. Full-Duplex Constraints
+   4. Cannot use Classic to broadcast or efficiently communicate with multiple devices simultaneously.
+   5. Android limits simultaneous Classic + BLE scanning or connections.
+
+4. How do you manage threading for BluetoothClassic communication?
+   ``` kotlin
+        class BluetoothClient(
+         private val bluetoothDevice: BluetoothDevice,
+         private val uuid: UUID
+     ) {
+         private var bluetoothSocket: BluetoothSocket? = null
+         private var inputStream: InputStream? = null
+         private var outputStream: OutputStream? = null
+     
+         private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+     
+         fun connect(onConnected: () -> Unit, onFailure: (Exception) -> Unit) {
+             coroutineScope.launch {
+                 try {
+                     bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(uuid)
+                     bluetoothSocket?.connect()
+     
+                     inputStream = bluetoothSocket?.inputStream
+                     outputStream = bluetoothSocket?.outputStream
+     
+                     withContext(Dispatchers.Main) { onConnected() }
+     
+                     listenForData()
+                 } catch (e: Exception) {
+                     withContext(Dispatchers.Main) { onFailure(e) }
+                 }
+             }
+         }
+     
+         private suspend fun listenForData() {
+             val buffer = ByteArray(1024)
+             try {
+                 while (true) {
+                     val bytesRead = inputStream?.read(buffer) ?: break
+                     if (bytesRead > 0) {
+                         val received = buffer.copyOf(bytesRead)
+                         // handle incoming data
+                         Log.d("Bluetooth", "Received: ${received.decodeToString()}")
+                     }
+                 }
+             } catch (e: IOException) {
+                 Log.e("Bluetooth", "Read failed: ${e.message}")
+             }
+         }
+     
+         fun write(data: ByteArray) {
+             coroutineScope.launch {
+                 try {
+                     outputStream?.write(data)
+                 } catch (e: IOException) {
+                     Log.e("Bluetooth", "Write failed: ${e.message}")
+                 }
+             }
+         }
+     
+         fun disconnect() {
+             coroutineScope.cancel()
+             try {
+                 inputStream?.close()
+                 outputStream?.close()
+                 bluetoothSocket?.close()
+             } catch (e: IOException) {
+                 Log.e("Bluetooth", "Disconnect failed: ${e.message}")
+             }
+         }
+     }
+
+
+     val client = BluetoothClient(device, MY_UUID)
+
+     client.connect(
+         onConnected = { Log.d("BT", "Connected!") },
+         onFailure = { error -> Log.e("BT", "Failed: ${error.message}") }
+     )
+     
+     // To send:
+     client.write("Hello!".toByteArray())
+     
+     // To close:
+     client.disconnect()
 
 What is SDP, and how does Android use it?
 
