@@ -155,9 +155,9 @@
    1. Which is suitable for periodic background Bluetooth sync tasks?
       WorkManager is suitable for periodic background work
       reasons:
-      life cycle aware
-      runs even if the app crashes
-      long-running task without load
+      1. life cycle aware
+      2. runs even if the app crashes
+      3. long-running task without load
    3. Threads and Async Tasks:
       1. Thread is a java concept
       ``` java
